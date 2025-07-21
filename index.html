@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add Number to GitHub DB</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen px-4">
+  <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
+    <h2 class="text-2xl font-bold text-center mb-4 text-gray-800">Tambah Nomor ke Database GitHub</h2>
+
+    <input id="numberInput" type="text" placeholder="Masukkan nomor (628xxx)" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring focus:ring-blue-400 outline-none mb-4" />
+
+    <button onclick="addNumber()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Tambah Nomor</button>
+
+    <div id="notif" class="mt-4 hidden text-center font-medium p-2 rounded-lg"></div>
+  </div>
+
+  <script>
+    const GITHUB_TOKEN = "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"; // 🔒 Ganti dengan token GitHub milikmu
+    const REPO_OWNER = "HanzyyOffc";
+    const REPO_NAME = "HanzyyOffc";
+    const FILE_PATH = "autenticator";
+    const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+
+    async function addNumber() {
+      const number = document.getElementById("numberInput").value.trim();
+      const notif = document.getElementById("notif");
+
+      if (!number) return showNotif("⚠️ Nomor tidak boleh kosong!", "bg-yellow-400");
+
+      try {
+        const getRes = await fetch(API_URL, {
+          headers: {
+            Authorization: `token ${GITHUB_TOKEN}`,
+            Accept: "application/vnd.github.v3+json"
+          }
+        });
+
+        const fileData = await getRes.json();
+        const contentDecoded = atob(fileData.content);
+        let json = JSON.parse(contentDecoded);
+
+        if (!json.dbny.includes(number)) {
+          json.dbny.push(number);
+          const updatedContent = btoa(JSON.stringify(json, null, 2));
+
+          await fetch(API_URL, {
+            method: "PUT",
+            headers: {
+              Authorization: `token ${GITHUB_TOKEN}`,
+              Accept: "application/vnd.github.v3+json"
+            },
+            body: JSON.stringify({
+              message: `Menambahkan nomor ${number}`,
+              content: updatedContent,
+              sha: fileData.sha
+            })
+          });
+
+          showNotif(`✅ Nomor ${number} berhasil ditambahkan!`, "bg-green-500");
+        } else {
+          showNotif(`⚠️ Nomor ${number} sudah terdaftar.`, "bg-yellow-500");
+        }
+      } catch (err) {
+        console.error(err);
+        showNotif("❌ Gagal menyimpan ke GitHub!", "bg-red-500");
+      }
+    }
+
+    function showNotif(msg, bgClass) {
+      const notif = document.getElementById("notif");
+      notif.textContent = msg;
+      notif.className = `mt-4 text-white text-sm font-medium p-3 rounded-lg ${bgClass}`;
+      notif.style.display = "block";
+      setTimeout(() => notif.style.display = "none", 3000);
+    }
+  </script>
+</body>
+</html>
