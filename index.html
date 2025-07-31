@@ -2,12 +2,12 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Tambah Nomor ke GitHub</title>
+  <title>Tambah Nomor ke Database</title>
   <style>
     body {
       background: #111;
-      color: #fff;
-      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      font-family: Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -16,53 +16,45 @@
     }
     input, button {
       padding: 12px;
-      border-radius: 8px;
-      font-size: 16px;
       margin: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      width: 250px;
     }
     button {
-      background: #1e90ff;
-      color: #fff;
-      border: none;
+      background-color: #007bff;
+      color: white;
       cursor: pointer;
     }
-    button:hover {
-      background: #0077cc;
-    }
     .status {
-      margin-top: 20px;
+      margin-top: 15px;
       font-size: 14px;
     }
-    .loading { color: orange; }
-    .success { color: lime; }
-    .error { color: red; }
   </style>
 </head>
 <body>
-
-  <h2>➕ Tambahkan Nomor ke Database</h2>
-  <input id="numberInput" type="text" placeholder="Contoh: 628xxx..." />
-  <button onclick="addNumber()">Tambah</button>
-  <div id="statusText" class="status"></div>
+  <h2>➕ Tambahkan Nomor</h2>
+  <input type="text" id="numberInput" placeholder="62xxxxxxxxxx" />
+  <button onclick="addNumber()">Tambah ke GitHub</button>
+  <div class="status" id="statusText">Siap menambahkan...</div>
 
   <script>
-    const GITHUB_TOKEN = "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"; // Ganti dengan token GitHub kamu
-    const REPO_OWNER = "HanzyyOffc";   // Ganti dengan pemilik repo
-    const REPO_NAME = "DBusername";    // Ganti dengan nama repo
-    const FILE_PATH = "dbuser.json";   // Ganti dengan path file JSON kamu
+    const GITHUB_TOKEN = "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";
+    const REPO_OWNER = "HanzyyOffc";
+    const REPO_NAME = "DBusername";
+    const FILE_PATH = "dbuser.json";
 
     async function addNumber() {
       const newNumber = document.getElementById("numberInput").value.trim();
       const status = document.getElementById("statusText");
 
-      if (!newNumber) {
-        status.textContent = "⚠️ Masukkan nomor!";
-        status.className = "status error";
+      if (!newNumber.startsWith("62")) {
+        status.innerText = "⚠️ Gunakan format nomor: 62xxxxxxxx";
         return;
       }
 
-      status.textContent = "⏳ Memproses...";
-      status.className = "status loading";
+      status.innerText = "⏳ Mengambil data dari GitHub...";
 
       const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
 
@@ -75,47 +67,45 @@
         });
 
         const data = await res.json();
-        if (!data.content || !data.sha) throw new Error("File kosong atau tidak ditemukan!");
 
-        const content = atob(data.content.replace(/\n/g, ""));
-        const jsonData = JSON.parse(content);
+        if (!data.content || !data.sha) throw new Error("Gagal ambil data file.");
 
-        if (!jsonData.dbny.includes(newNumber)) {
-          jsonData.dbny.push(newNumber);
-          const updatedContent = btoa(JSON.stringify(jsonData, null, 2));
+        const decoded = atob(data.content.replace(/\n/g, ""));
+        const json = JSON.parse(decoded);
 
-          const update = await fetch(apiUrl, {
-            method: "PUT",
-            headers: {
-              Authorization: `token ${GITHUB_TOKEN}`,
-              Accept: "application/vnd.github.v3+json"
-            },
-            body: JSON.stringify({
-              message: `Tambah nomor ${newNumber}`,
-              content: updatedContent,
-              sha: data.sha
-            })
-          });
+        if (json.dbny.includes(newNumber)) {
+          status.innerText = `⚠️ Nomor ${newNumber} sudah ada.`;
+          return;
+        }
 
-          if (update.ok) {
-            status.textContent = `✅ Nomor ${newNumber} berhasil ditambahkan!`;
-            status.className = "status success";
-            document.getElementById("numberInput").value = "";
-          } else {
-            throw new Error("Gagal memperbarui file di GitHub.");
-          }
+        json.dbny.push(newNumber);
+        const updatedContent = btoa(JSON.stringify(json, null, 2));
+
+        const update = await fetch(apiUrl, {
+          method: "PUT",
+          headers: {
+            Authorization: `token ${GITHUB_TOKEN}`,
+            Accept: "application/vnd.github.v3+json"
+          },
+          body: JSON.stringify({
+            message: `Menambahkan nomor ${newNumber}`,
+            content: updatedContent,
+            sha: data.sha
+          })
+        });
+
+        if (update.ok) {
+          status.innerText = `✅ Nomor ${newNumber} berhasil ditambahkan!`;
+          document.getElementById("numberInput").value = "";
         } else {
-          status.textContent = `⚠️ Nomor ${newNumber} sudah ada.`;
-          status.className = "status error";
+          throw new Error("Gagal update file.");
         }
 
       } catch (err) {
-        status.textContent = `❌ Gagal menambahkan: ${err.message}`;
-        status.className = "status error";
         console.error(err);
+        status.innerText = `❌ Error: ${err.message}`;
       }
     }
   </script>
-
 </body>
 </html>
